@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo Editor</title>
+    <style>
+        @font-face {
+            font-family: 'AlimamaFangYuanTiVF';
+            src: url('AlimamaFangYuanTiVF.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        :root {
+            --bg-color: #f0f0f5;
+            --sidebar-bg: #ffffff;
+            --cell-bg: #e6e6e6;
+            --cell-border: #cccccc;
+            --cell-text: #333333;
+            --accent: #007aff;
+            --accent-hover: #0056b3;
+            --area-border: #007aff;
+            --area-bg: rgba(0, 122, 255, 0.1);
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'AlimamaFangYuanTiVF', sans-serif;
+            user-select: none;
+        }
+
+        input {
+            user-select: text;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #333;
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            transition: all var(--transition-speed);
+        }
+
+        #app {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            width: 250px;
+            background-color: var(--sidebar-bg);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            transition: transform var(--transition-speed), width var(--transition-speed), opacity var(--transition-speed);
+            z-index: 10;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateX(-100%);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 14px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            padding: 8px;
+            background: #fff;
+            color: #333;
+            font-size: 13px;
+            outline: none;
+            user-select: text;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.14);
+        }
+
+        textarea {
+            min-height: 64px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.danger {
+            background-color: #ff3b30;
+        }
+
+        button.danger:hover {
+            background-color: #e0352b;
+        }
+
+        button.secondary {
+            background-color: #5f6b7a;
+        }
+
+        button.secondary:hover {
+            background-color: #485463;
+        }
+
+        button.subtle {
+            background-color: #eef1f5;
+            color: #333;
+        }
+
+        button.subtle:hover {
+            background-color: #dde3ea;
+        }
+
+        .mini-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .option-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            color: #444;
+        }
+
+        .option-row input {
+            flex: 0 0 auto;
+        }
+
+        #word-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 32px;
+        }
+
+        .word-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            max-width: 100%;
+            padding: 4px 7px;
+            border-radius: 6px;
+            background: #eef1f5;
+            color: #333;
+            font-size: 12px;
+        }
+
+        .word-chip span {
+            overflow-wrap: anywhere;
+        }
+
+        .word-chip button {
+            width: 18px;
+            height: 18px;
+            padding: 0;
+            border-radius: 50%;
+            background: #c9d0da;
+            color: #333;
+            line-height: 1;
+            font-size: 12px;
+        }
+
+        #generator-status {
+            min-height: 30px;
+            font-size: 12px;
+            color: #777;
+            line-height: 1.35;
+        }
+
+        #generator-status.error {
+            color: #c9352b;
+        }
+
+        #generator-status.ok {
+            color: #248a3d;
+        }
+
+        /* Main Bingo Area */
+        #main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px;
+            transition: padding var(--transition-speed);
+        }
+        
+        #main.collapsed-padding {
+            padding: 0;
+        }
+
+        #color-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+            z-index: 30;
+            display: none;
+        }
+
+        #bingo-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 1/1;
+        }
+
+        #drag-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: none;
+            cursor: crosshair;
+        }
+        #drag-overlay.active {
+            display: block;
+        }
+
+        #bingo-grid {
+            display: grid;
+            gap: 4px;
+            background-color: var(--cell-border);
+            border: 4px solid var(--cell-border);
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 1/1;
+            max-width: 100%;
+            max-height: 100%;
+            position: relative;
+        }
+
+        .cell {
+            background-color: var(--cell-bg);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--cell-text);
+            cursor: text;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .cell:hover {
+            background-color: #d4d4d4;
+        }
+        
+        .cell.selected-endpoint {
+            background-color: #c0c0c0 !important;
+            box-shadow: inset 0 0 0 3px #555;
+        }
+
+        .cell input {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-family: inherit;
+            font-size: inherit;
+            text-align: center;
+            outline: none;
+            cursor: inherit;
+            user-select: text;
+        }
+
+        /* Rectangular Area Selection Box */
+        #area-box {
+            position: absolute;
+            border: 2px dashed var(--area-border);
+            background-color: var(--area-bg);
+            pointer-events: none;
+            opacity: 0;
+            z-index: 4;
+            transition: none; /* Instant for dragging */
+        }
+        #area-box.visible {
+            opacity: 1;
+        }
+        
+        /* Container for all diagonal lines */
+        #boxes-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Toggle Button */
+        #toggle-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(5px);
+            padding: 8px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        #toggle-btn svg {
+            fill: #333;
+            width: 24px;
+            height: 24px;
+            transition: transform var(--transition-speed);
+        }
+
+        #toggle-btn.collapsed svg {
+            transform: rotate(180deg);
+        }
+
+        #save-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.32);
+            z-index: 100;
+            padding: 16px;
+        }
+
+        #save-modal-backdrop.visible {
+            display: flex;
+        }
+
+        #save-modal {
+            width: min(360px, 100%);
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        #save-modal h3 {
+            font-size: 18px;
+        }
+
+        #save-modal p {
+            font-size: 12px;
+            color: #777;
+            line-height: 1.4;
+        }
+
+        #toast {
+            position: fixed;
+            top: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(36, 138, 61, 0.94);
+            color: white;
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 16px;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 120;
+            transition: opacity 1.4s ease, transform 1.4s ease;
+        }
+
+        #toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(8px);
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="sidebar">
+        <h2 id="app-title" style="margin-top: 40px;">Bingo Editor</h2>
+
+        <div class="control-group">
+            <label for="language-select" data-i18n="languageLabel">Language</label>
+            <select id="language-select">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+                <option value="ko">한국어</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label data-i18n="modeLabel">Mode</label>
+            <div style="display: flex; gap: 10px;">
+                <button id="mode-edit-btn" style="flex: 1; background-color: var(--accent);" data-i18n="editMode">Edit</button>
+                <button id="mode-draw-btn" style="flex: 1; background-color: #34c759; opacity: 0.4;" data-i18n="drawMode">Confirm & Draw</button>
+            </div>
+            <p id="mode-desc" style="font-size: 12px; color: #888;">Editing: Type and drag blocks.</p>
+        </div>
+
+        <div class="control-group" id="color-picker-group">
+            <label data-i18n="lineColors">Line Colors (Press Q to swap in Play mode)</label>
+            <p style="font-size: 11px; color: #888; margin-top: -5px;" data-i18n="deleteColorHint">Right-click a color to delete it.</p>
+            <div id="color-palette" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
+            <button id="clear-lines-btn" style="margin-top: 5px;" data-i18n="clearLines">Clear Lines</button>
+        </div>
+
+        <div class="control-group">
+            <label for="grid-size"><span data-i18n="gridSize">Grid Size</span> (N x N): <span id="size-val">5</span></label>
+            <input type="range" id="grid-size" min="2" max="25" value="5">
+        </div>
+
+        <div class="control-group" id="generator-panel">
+            <label data-i18n="generatorTitle">词云矩阵生成器</label>
+            <input id="matrix-name" type="text" placeholder="矩阵名称" data-i18n-placeholder="matrixNamePlaceholder">
+            <textarea id="word-input" placeholder="输入词语，按回车或逗号分隔" data-i18n-placeholder="wordInputPlaceholder"></textarea>
+            <div class="mini-row">
+                <button id="add-word-btn" class="secondary" style="flex: 1;" data-i18n="addWords">添加词语</button>
+                <button id="clear-words-btn" class="subtle" style="flex: 1;" data-i18n="clearWords">清空词语</button>
+            </div>
+            <div id="word-list"></div>
+            <label for="generator-size"><span data-i18n="generatorSize">生成大小</span>: <span id="generator-size-val">15</span> x <span id="generator-size-val-2">15</span></label>
+            <input type="range" id="generator-size" min="2" max="25" value="15">
+            <label for="fill-chars" data-i18n="fillChars">填充字符</label>
+            <input id="fill-chars" type="text" value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">
+            <label class="option-row">
+                <input id="allow-overlap" type="checkbox" checked>
+                <span data-i18n="allowOverlap">允许词语共享相同字符</span>
+            </label>
+            <label data-i18n="allowedDirections">允许呈现方向</label>
+            <label class="option-row"><input class="direction-toggle" type="checkbox" value="horizontal" checked><span data-i18n="dirHorizontal">横向</span></label>
+            <label class="option-row"><input class="direction-toggle" type="checkbox" value="vertical" checked><span data-i18n="dirVertical">竖向</span></label>
+            <label class="option-row"><input class="direction-toggle" type="checkbox" value="diagDown" checked><span data-i18n="dirDiagDown">正对角线</span></label>
+            <label class="option-row"><input class="direction-toggle" type="checkbox" value="diagUp" checked><span data-i18n="dirDiagUp">副对角线</span></label>
+            <p id="generator-status">添加词语后会检测是否可生成可导入的矩阵。</p>
+            <button id="generate-btn" data-i18n="generate">完成并生成</button>
+        </div>
+
+        <div class="control-group" style="flex-direction: row; gap: 10px;">
+            <button id="save-btn" style="flex: 1;" data-i18n="save">Save</button>
+            <button id="load-btn" style="flex: 1;" data-i18n="load">Load</button>
+        </div>
+
+        <div class="control-group">
+            <button id="clear-btn" class="danger" data-i18n="clearAll">Clear All</button>
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="color-indicator"></div>
+        <button id="toggle-btn" title="Toggle Sidebar" data-i18n-title="toggleSidebar">
+            <svg viewBox="0 0 24 24">
+                <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/>
+            </svg>
+        </button>
+        
+        <div id="bingo-container">
+            <div id="bingo-grid"></div>
+            <div id="boxes-container"></div>
+            <div id="area-box"></div>
+            <div id="drag-overlay"></div>
+        </div>
+    </div>
+</div>
+
+<div id="save-modal-backdrop">
+    <div id="save-modal">
+        <h3 data-i18n="saveGeneratedTitle">保存生成结果</h3>
+        <p data-i18n="saveGeneratedDesc">确认后会写入项目的 save 文件夹，并立即呈现在当前界面。</p>
+        <label for="generated-file-name" data-i18n="fileName">文件名</label>
+        <input id="generated-file-name" type="text" value="bingo_custom.json">
+        <div class="mini-row">
+            <button id="confirm-generate-btn" style="flex: 1;" data-i18n="confirmSave">确认保存</button>
+            <button id="cancel-generate-btn" class="subtle" style="flex: 1;" data-i18n="cancel">取消</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" data-i18n="generatedDone">生成完毕！</div>
+
+<script>
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const mainArea = document.getElementById('main');
+    const gridSizeInput = document.getElementById('grid-size');
+    const sizeVal = document.getElementById('size-val');
+    const grid = document.getElementById('bingo-grid');
+    const clearBtn = document.getElementById('clear-btn');
+    const clearLinesBtn = document.getElementById('clear-lines-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const loadBtn = document.getElementById('load-btn');
+    
+    const boxesContainer = document.getElementById('boxes-container');
+    const areaBox = document.getElementById('area-box');
+    const dragOverlay = document.getElementById('drag-overlay');
+    const bingoContainer = document.getElementById('bingo-container');
+    
+    const modeEditBtn = document.getElementById('mode-edit-btn');
+    const modeDrawBtn = document.getElementById('mode-draw-btn');
+    const modeDesc = document.getElementById('mode-desc');
+    const colorPickerGroup = document.getElementById('color-picker-group');
+    const colorPalette = document.getElementById('color-palette');
+    const languageSelect = document.getElementById('language-select');
+    const matrixNameInput = document.getElementById('matrix-name');
+    const wordInput = document.getElementById('word-input');
+    const addWordBtn = document.getElementById('add-word-btn');
+    const clearWordsBtn = document.getElementById('clear-words-btn');
+    const wordList = document.getElementById('word-list');
+    const generatorSizeInput = document.getElementById('generator-size');
+    const generatorSizeVal = document.getElementById('generator-size-val');
+    const generatorSizeVal2 = document.getElementById('generator-size-val-2');
+    const fillCharsInput = document.getElementById('fill-chars');
+    const allowOverlapInput = document.getElementById('allow-overlap');
+    const directionToggles = Array.from(document.querySelectorAll('.direction-toggle'));
+    const generatorStatus = document.getElementById('generator-status');
+    const generateBtn = document.getElementById('generate-btn');
+    const saveModalBackdrop = document.getElementById('save-modal-backdrop');
+    const generatedFileNameInput = document.getElementById('generated-file-name');
+    const confirmGenerateBtn = document.getElementById('confirm-generate-btn');
+    const cancelGenerateBtn = document.getElementById('cancel-generate-btn');
+    const toast = document.getElementById('toast');
+
+    const translations = {
+        zh: {
+            appTitle: 'Bingo 编辑器',
+            languageLabel: '界面语言',
+            modeLabel: '模式',
+            editMode: '编辑',
+            drawMode: '确认并绘制',
+            modeEditDesc: '编辑中：输入文字并拖动文字块。',
+            modeDrawDesc: '游玩模式：点击两个格子连线。三击同一格退出。按 Q 切换颜色。',
+            lineColors: '线条颜色（游玩模式按 Q 切换）',
+            deleteColorHint: '右键颜色可删除。',
+            clearLines: '清空线条',
+            gridSize: '网格大小',
+            generatorTitle: '词云矩阵生成器',
+            matrixNamePlaceholder: '矩阵名称',
+            wordInputPlaceholder: '输入词语，用换行、逗号或分号分隔',
+            addWords: '添加词语',
+            clearWords: '清空词语',
+            generatorSize: '生成大小',
+            fillChars: '填充字符',
+            allowOverlap: '允许词语共享相同字符',
+            allowedDirections: '允许呈现方向',
+            dirHorizontal: '横向',
+            dirVertical: '竖向',
+            dirDiagDown: '正对角线',
+            dirDiagUp: '副对角线',
+            generate: '完成并生成',
+            save: '保存',
+            load: '加载',
+            clearAll: '清空全部',
+            toggleSidebar: '展开/收起侧边栏',
+            saveGeneratedTitle: '保存生成结果',
+            saveGeneratedDesc: '确认后会写入项目的 save 文件夹，并立即呈现在当前界面。',
+            fileName: '文件名',
+            confirmSave: '确认保存',
+            cancel: '取消',
+            generatedDone: '生成完毕！',
+            noWords: '暂无词语',
+            removeWord: '删除',
+            statusEmptyWords: '请先添加至少一个词语。',
+            statusBadSize: '矩阵大小必须在 2 到 25 之间。',
+            statusEmptyFill: '填充字符不能为空。',
+            statusNoDirections: '请至少保留一个呈现方向。',
+            statusLongestWord: '最长词语需要 {longest} 格，当前矩阵只有 {size} 格。',
+            statusReady: '可生成：{count} 个词语，{size} x {size}，导入结构可通过。',
+            placeFailed: '无法放入词语「{word}」。请增大矩阵、允许重合或开放更多方向。',
+            generatedBadSize: '生成结果的矩阵大小不合法。',
+            generatedBadData: '生成结果的 data 长度不符合导入要求。',
+            generatedBadBoxes: '生成结果的 boxes 不是数组。',
+            generatedBoxOutOfBounds: '第 {index} 个词语标记越界，无法导入。',
+            saveFailed: '保存失败，请检查 save 文件夹权限。',
+            saved: '已保存：{path}'
+        },
+        en: {
+            appTitle: 'Bingo Editor',
+            languageLabel: 'Language',
+            modeLabel: 'Mode',
+            editMode: 'Edit',
+            drawMode: 'Confirm & Draw',
+            modeEditDesc: 'Editing: Type and drag blocks.',
+            modeDrawDesc: 'Play Mode: Click two cells to connect. Triple-click a cell to exit. Press Q to swap color.',
+            lineColors: 'Line Colors (Press Q to swap in Play mode)',
+            deleteColorHint: 'Right-click a color to delete it.',
+            clearLines: 'Clear Lines',
+            gridSize: 'Grid Size',
+            generatorTitle: 'Word Matrix Generator',
+            matrixNamePlaceholder: 'Matrix name',
+            wordInputPlaceholder: 'Enter words, separated by new lines, commas, or semicolons',
+            addWords: 'Add Words',
+            clearWords: 'Clear Words',
+            generatorSize: 'Generator Size',
+            fillChars: 'Fill Characters',
+            allowOverlap: 'Allow words to share matching characters',
+            allowedDirections: 'Allowed Directions',
+            dirHorizontal: 'Horizontal',
+            dirVertical: 'Vertical',
+            dirDiagDown: 'Main diagonal',
+            dirDiagUp: 'Anti-diagonal',
+            generate: 'Confirm & Generate',
+            save: 'Save',
+            load: 'Load',
+            clearAll: 'Clear All',
+            toggleSidebar: 'Toggle Sidebar',
+            saveGeneratedTitle: 'Save Generated Result',
+            saveGeneratedDesc: 'After confirmation, the file is saved to the save folder and shown in the current view.',
+            fileName: 'File name',
+            confirmSave: 'Confirm Save',
+            cancel: 'Cancel',
+            generatedDone: 'Generated!',
+            noWords: 'No words yet',
+            removeWord: 'Remove',
+            statusEmptyWords: 'Add at least one word first.',
+            statusBadSize: 'Matrix size must be between 2 and 25.',
+            statusEmptyFill: 'Fill characters cannot be empty.',
+            statusNoDirections: 'Keep at least one direction enabled.',
+            statusLongestWord: 'The longest word needs {longest} cells, but the matrix is only {size}.',
+            statusReady: 'Ready: {count} words, {size} x {size}, import structure passes.',
+            placeFailed: 'Could not place "{word}". Increase the size, allow overlap, or enable more directions.',
+            generatedBadSize: 'Generated matrix size is invalid.',
+            generatedBadData: 'Generated data length does not meet import requirements.',
+            generatedBadBoxes: 'Generated boxes is not an array.',
+            generatedBoxOutOfBounds: 'Word marker {index} is out of bounds and cannot be imported.',
+            saveFailed: 'Save failed. Check write access to the save folder.',
+            saved: 'Saved: {path}'
+        },
+        ja: {
+            appTitle: 'Bingo エディター',
+            languageLabel: '表示言語',
+            modeLabel: 'モード',
+            editMode: '編集',
+            drawMode: '確定して描画',
+            modeEditDesc: '編集中：文字を入力し、ブロックをドラッグできます。',
+            modeDrawDesc: 'プレイモード：2 つのマスをクリックして接続します。同じマスを 3 回クリックすると終了します。Q で色を切り替えます。',
+            lineColors: '線の色（プレイモードでは Q で切り替え）',
+            deleteColorHint: '色を右クリックすると削除できます。',
+            clearLines: '線をクリア',
+            gridSize: 'グリッドサイズ',
+            generatorTitle: 'ワードマトリックス生成',
+            matrixNamePlaceholder: 'マトリックス名',
+            wordInputPlaceholder: '単語を入力。改行、カンマ、セミコロンで区切ります',
+            addWords: '単語を追加',
+            clearWords: '単語をクリア',
+            generatorSize: '生成サイズ',
+            fillChars: '埋め文字',
+            allowOverlap: '同じ文字の共有を許可',
+            allowedDirections: '許可する方向',
+            dirHorizontal: '横',
+            dirVertical: '縦',
+            dirDiagDown: '主対角線',
+            dirDiagUp: '副対角線',
+            generate: '確定して生成',
+            save: '保存',
+            load: '読み込み',
+            clearAll: 'すべてクリア',
+            toggleSidebar: 'サイドバー切り替え',
+            saveGeneratedTitle: '生成結果を保存',
+            saveGeneratedDesc: '確定すると save フォルダーに保存され、現在の画面に表示されます。',
+            fileName: 'ファイル名',
+            confirmSave: '保存を確定',
+            cancel: 'キャンセル',
+            generatedDone: '生成完了！',
+            noWords: '単語はまだありません',
+            removeWord: '削除',
+            statusEmptyWords: '先に少なくとも 1 つの単語を追加してください。',
+            statusBadSize: 'マトリックスサイズは 2 から 25 の間にしてください。',
+            statusEmptyFill: '埋め文字は空にできません。',
+            statusNoDirections: '少なくとも 1 つの方向を有効にしてください。',
+            statusLongestWord: '最長の単語には {longest} マス必要ですが、現在のサイズは {size} です。',
+            statusReady: '生成可能：{count} 語、{size} x {size}、インポート構造は有効です。',
+            placeFailed: '「{word}」を配置できません。サイズを大きくするか、重なりや方向を増やしてください。',
+            generatedBadSize: '生成結果のマトリックスサイズが不正です。',
+            generatedBadData: '生成結果の data 長がインポート要件を満たしていません。',
+            generatedBadBoxes: '生成結果の boxes が配列ではありません。',
+            generatedBoxOutOfBounds: '{index} 番目の単語マーカーが範囲外で、インポートできません。',
+            saveFailed: '保存に失敗しました。save フォルダーの書き込み権限を確認してください。',
+            saved: '保存済み：{path}'
+        },
+        ko: {
+            appTitle: 'Bingo 편집기',
+            languageLabel: '화면 언어',
+            modeLabel: '모드',
+            editMode: '편집',
+            drawMode: '확인 후 그리기',
+            modeEditDesc: '편집 중: 글자를 입력하고 블록을 드래그하세요.',
+            modeDrawDesc: '플레이 모드: 두 칸을 클릭해 연결합니다. 같은 칸을 세 번 클릭하면 종료됩니다. Q 키로 색을 바꿉니다.',
+            lineColors: '선 색상(플레이 모드에서 Q로 전환)',
+            deleteColorHint: '색상을 우클릭하면 삭제됩니다.',
+            clearLines: '선 지우기',
+            gridSize: '격자 크기',
+            generatorTitle: '단어 매트릭스 생성기',
+            matrixNamePlaceholder: '매트릭스 이름',
+            wordInputPlaceholder: '단어를 입력하고 줄바꿈, 쉼표 또는 세미콜론으로 구분하세요',
+            addWords: '단어 추가',
+            clearWords: '단어 지우기',
+            generatorSize: '생성 크기',
+            fillChars: '채움 문자',
+            allowOverlap: '같은 문자의 공유 허용',
+            allowedDirections: '허용 방향',
+            dirHorizontal: '가로',
+            dirVertical: '세로',
+            dirDiagDown: '주대각선',
+            dirDiagUp: '부대각선',
+            generate: '확인 후 생성',
+            save: '저장',
+            load: '불러오기',
+            clearAll: '전체 지우기',
+            toggleSidebar: '사이드바 전환',
+            saveGeneratedTitle: '생성 결과 저장',
+            saveGeneratedDesc: '확인하면 save 폴더에 저장되고 현재 화면에 바로 표시됩니다.',
+            fileName: '파일 이름',
+            confirmSave: '저장 확인',
+            cancel: '취소',
+            generatedDone: '생성 완료!',
+            noWords: '아직 단어가 없습니다',
+            removeWord: '삭제',
+            statusEmptyWords: '먼저 단어를 하나 이상 추가하세요.',
+            statusBadSize: '매트릭스 크기는 2에서 25 사이여야 합니다.',
+            statusEmptyFill: '채움 문자는 비워 둘 수 없습니다.',
+            statusNoDirections: '방향을 하나 이상 활성화하세요.',
+            statusLongestWord: '가장 긴 단어는 {longest}칸이 필요하지만 현재 크기는 {size}입니다.',
+            statusReady: '생성 가능: {count}개 단어, {size} x {size}, 가져오기 구조 통과.',
+            placeFailed: '"{word}"을(를) 배치할 수 없습니다. 크기를 키우거나, 겹침을 허용하거나, 방향을 더 활성화하세요.',
+            generatedBadSize: '생성된 매트릭스 크기가 올바르지 않습니다.',
+            generatedBadData: '생성된 data 길이가 가져오기 요구사항에 맞지 않습니다.',
+            generatedBadBoxes: '생성된 boxes가 배열이 아닙니다.',
+            generatedBoxOutOfBounds: '{index}번째 단어 표시가 범위를 벗어나 가져올 수 없습니다.',
+            saveFailed: '저장에 실패했습니다. save 폴더 권한을 확인하세요.',
+            saved: '저장됨: {path}'
+        }
+    };
+
+    let currentLanguage = localStorage.getItem('bingo-ui-language') || 'zh';
+    if (!translations[currentLanguage]) currentLanguage = 'zh';
+    languageSelect.value = currentLanguage;
+
+    function t(key, params = {}) {
+        const template = translations[currentLanguage]?.[key] || translations.en[key] || key;
+        return template.replace(/\{(\w+)\}/g, (_, name) => params[name] ?? '');
+    }
+
+    function applyLanguage() {
+        document.documentElement.lang = currentLanguage;
+        document.title = t('appTitle');
+        document.getElementById('app-title').textContent = t('appTitle');
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            el.textContent = t(el.dataset.i18n);
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            el.setAttribute('placeholder', t(el.dataset.i18nPlaceholder));
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            el.setAttribute('title', t(el.dataset.i18nTitle));
+        });
+        modeDesc.textContent = currentMode === 'EDIT' ? t('modeEditDesc') : t('modeDrawDesc');
+        renderWordList();
+        updateGeneratorStatus();
+    }
+
+    let N = parseInt(gridSizeInput.value);
+    let cells = [];
+    let isCollapsed = false;
+    
+    // Modes
+    let currentMode = 'EDIT'; // 'EDIT' or 'DRAW'
+
+    // Drawing State
+    let firstSelectedCell = null;
+    let drawnBoxes = [];
+    let customColors = ['#ff3b30', '#007aff', '#34c759', '#ffcc00', '#af52de', '#ff9500'];
+    let currentColorIndex = 0;
+    let generatorWords = [];
+    let pendingGeneratedState = null;
+    let toastTimer = null;
+
+    // Build color palette
+    function renderColorPalette() {
+        colorPalette.innerHTML = '';
+        customColors.forEach((color, index) => {
+            const wrap = document.createElement('div');
+            wrap.style.position = 'relative';
+            
+            const input = document.createElement('input');
+            input.type = 'color';
+            input.value = color;
+            input.style.width = '24px';
+            input.style.height = '24px';
+            input.style.padding = '0';
+            input.style.border = index === currentColorIndex ? '3px solid #333' : '1px solid #ccc';
+            input.style.borderRadius = '4px';
+            input.style.cursor = 'pointer';
+            
+            input.addEventListener('input', (e) => {
+                customColors[index] = e.target.value;
+                updateColorIndicator();
+            });
+            input.addEventListener('click', () => {
+                setColorIndex(index);
+            });
+            
+            // right click to remove
+            input.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (customColors.length > 1) {
+                    customColors.splice(index, 1);
+                    if (currentColorIndex >= customColors.length) currentColorIndex = 0;
+                    renderColorPalette();
+                    updateColorIndicator();
+                }
+            });
+            
+            wrap.appendChild(input);
+            colorPalette.appendChild(wrap);
+        });
+        
+        const addBtn = document.createElement('button');
+        addBtn.textContent = '+';
+        addBtn.style.width = '24px';
+        addBtn.style.height = '24px';
+        addBtn.style.padding = '0';
+        addBtn.style.display = 'flex';
+        addBtn.style.alignItems = 'center';
+        addBtn.style.justifyContent = 'center';
+        addBtn.addEventListener('click', () => {
+            customColors.push('#000000');
+            renderColorPalette();
+        });
+        colorPalette.appendChild(addBtn);
+    }
+
+    function setColorIndex(idx) {
+        currentColorIndex = idx;
+        renderColorPalette();
+        updateColorIndicator();
+    }
+    
+    function updateColorIndicator() {
+        const indicator = document.getElementById('color-indicator');
+        if (indicator && customColors[currentColorIndex]) {
+            indicator.style.backgroundColor = customColors[currentColorIndex];
+        }
+    }
+
+    renderColorPalette();
+    updateColorIndicator();
+
+    function getStoredFillChars() {
+        return localStorage.getItem('bingo-generator-fill-chars') || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    }
+
+    fillCharsInput.value = getStoredFillChars();
+
+    function splitWords(text) {
+        return text
+            .split(/[\n,，;；]+/)
+            .map(word => normalizeWord(word))
+            .filter(Boolean);
+    }
+
+    function normalizeWord(word) {
+        return Array.from(word.trim()).filter(ch => !/\s/.test(ch)).join('');
+    }
+
+    function renderWordList() {
+        wordList.innerHTML = '';
+        if (generatorWords.length === 0) {
+            const empty = document.createElement('p');
+            empty.style.fontSize = '12px';
+            empty.style.color = '#999';
+            empty.textContent = t('noWords');
+            wordList.appendChild(empty);
+            return;
+        }
+
+        generatorWords.forEach((word, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'word-chip';
+            const label = document.createElement('span');
+            label.textContent = word;
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.textContent = 'x';
+            remove.title = t('removeWord');
+            remove.addEventListener('click', () => {
+                generatorWords.splice(index, 1);
+                renderWordList();
+                updateGeneratorStatus();
+            });
+            chip.appendChild(label);
+            chip.appendChild(remove);
+            wordList.appendChild(chip);
+        });
+    }
+
+    function addWordsFromInput() {
+        const words = splitWords(wordInput.value);
+        words.forEach(word => {
+            if (!generatorWords.includes(word)) {
+                generatorWords.push(word);
+            }
+        });
+        wordInput.value = '';
+        renderWordList();
+        updateGeneratorStatus();
+    }
+
+    function getEnabledDirections() {
+        const base = {
+            horizontal: { dr: 0, dc: 1, label: t('dirHorizontal') },
+            vertical: { dr: 1, dc: 0, label: t('dirVertical') },
+            diagDown: { dr: 1, dc: 1, label: t('dirDiagDown') },
+            diagUp: { dr: 1, dc: -1, label: t('dirDiagUp') }
+        };
+        return directionToggles
+            .filter(toggle => toggle.checked)
+            .map(toggle => base[toggle.value])
+            .filter(Boolean);
+    }
+
+    function setGeneratorStatus(message, type = '') {
+        generatorStatus.textContent = message;
+        generatorStatus.className = type;
+    }
+
+    function getGeneratorSettings() {
+        return {
+            name: matrixNameInput.value.trim(),
+            words: generatorWords.map(normalizeWord).filter(Boolean),
+            size: parseInt(generatorSizeInput.value, 10),
+            fillChars: Array.from(fillCharsInput.value.trim()),
+            allowOverlap: allowOverlapInput.checked,
+            directions: getEnabledDirections()
+        };
+    }
+
+    function validateGeneratorSettings(settings) {
+        if (settings.words.length === 0) {
+            return { ok: false, message: t('statusEmptyWords') };
+        }
+        if (!Number.isInteger(settings.size) || settings.size < 2 || settings.size > 25) {
+            return { ok: false, message: t('statusBadSize') };
+        }
+        if (settings.fillChars.length === 0) {
+            return { ok: false, message: t('statusEmptyFill') };
+        }
+        if (settings.directions.length === 0) {
+            return { ok: false, message: t('statusNoDirections') };
+        }
+        const longest = settings.words.reduce((max, word) => Math.max(max, Array.from(word).length), 0);
+        if (longest > settings.size) {
+            return { ok: false, message: t('statusLongestWord', { longest, size: settings.size }) };
+        }
+        return { ok: true, message: t('statusReady', { count: settings.words.length, size: settings.size }) };
+    }
+
+    function seededRandomInt(max) {
+        if (window.crypto && window.crypto.getRandomValues) {
+            const buffer = new Uint32Array(1);
+            window.crypto.getRandomValues(buffer);
+            return buffer[0] % max;
+        }
+        return Math.floor(Math.random() * max);
+    }
+
+    function shuffleArray(items) {
+        const result = items.slice();
+        for (let i = result.length - 1; i > 0; i--) {
+            const j = seededRandomInt(i + 1);
+            [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
+    }
+
+    function findWordPlacement(gridData, occupied, word, settings) {
+        const chars = Array.from(word);
+        const candidates = [];
+        const directions = shuffleArray(settings.directions);
+
+        directions.forEach(direction => {
+            for (let r = 0; r < settings.size; r++) {
+                for (let c = 0; c < settings.size; c++) {
+                    const endR = r + direction.dr * (chars.length - 1);
+                    const endC = c + direction.dc * (chars.length - 1);
+                    if (endR < 0 || endR >= settings.size || endC < 0 || endC >= settings.size) {
+                        continue;
+                    }
+
+                    let overlapScore = 0;
+                    let valid = true;
+                    const cellsToUse = [];
+                    for (let i = 0; i < chars.length; i++) {
+                        const rr = r + direction.dr * i;
+                        const cc = c + direction.dc * i;
+                        const index = rr * settings.size + cc;
+                        const current = gridData[index];
+                        if (current) {
+                            if (!settings.allowOverlap || current !== chars[i]) {
+                                valid = false;
+                                break;
+                            }
+                            overlapScore++;
+                        } else if (!settings.allowOverlap && occupied.has(index)) {
+                            valid = false;
+                            break;
+                        }
+                        cellsToUse.push({ rr, cc, index, char: chars[i] });
+                    }
+
+                    if (valid) {
+                        const center = (settings.size - 1) / 2;
+                        const midR = (r + endR) / 2;
+                        const midC = (c + endC) / 2;
+                        const centerScore = -Math.hypot(midR - center, midC - center);
+                        candidates.push({
+                            r1: r,
+                            c1: c,
+                            r2: endR,
+                            c2: endC,
+                            cellsToUse,
+                            overlapScore,
+                            centerScore,
+                            jitter: Math.random()
+                        });
+                    }
+                }
+            }
+        });
+
+        if (candidates.length === 0) {
+            return null;
+        }
+
+        candidates.sort((a, b) => {
+            if (b.overlapScore !== a.overlapScore) return b.overlapScore - a.overlapScore;
+            if (b.centerScore !== a.centerScore) return b.centerScore - a.centerScore;
+            return b.jitter - a.jitter;
+        });
+        return candidates[0];
+    }
+
+    function generateWordCloudState(settings) {
+        const gridData = Array(settings.size * settings.size).fill('');
+        const occupied = new Set();
+        const boxes = [];
+        const sortedWords = settings.words
+            .map(word => ({ word, length: Array.from(word).length }))
+            .sort((a, b) => b.length - a.length);
+
+        for (const item of sortedWords) {
+            const placement = findWordPlacement(gridData, occupied, item.word, settings);
+            if (!placement) {
+                throw new Error(t('placeFailed', { word: item.word }));
+            }
+
+            placement.cellsToUse.forEach(cell => {
+                gridData[cell.index] = cell.char;
+                occupied.add(cell.index);
+            });
+            boxes.push({
+                r1: placement.r1,
+                c1: placement.c1,
+                r2: placement.r2,
+                c2: placement.c2,
+                color: customColors[boxes.length % customColors.length]
+            });
+        }
+
+        for (let i = 0; i < gridData.length; i++) {
+            if (!gridData[i]) {
+                gridData[i] = settings.fillChars[seededRandomInt(settings.fillChars.length)];
+            }
+        }
+
+        const state = {
+            N: settings.size,
+            data: gridData,
+            boxes
+        };
+        validateImportableState(state);
+        return state;
+    }
+
+    function validateImportableState(state) {
+        if (!state || !Number.isInteger(state.N) || state.N < 2 || state.N > 25) {
+            throw new Error(t('generatedBadSize'));
+        }
+        if (!Array.isArray(state.data) || state.data.length !== state.N * state.N) {
+            throw new Error(t('generatedBadData'));
+        }
+        if (!Array.isArray(state.boxes)) {
+            throw new Error(t('generatedBadBoxes'));
+        }
+        state.boxes.forEach((box, index) => {
+            const coords = [box.r1, box.c1, box.r2, box.c2];
+            if (coords.some(value => !Number.isInteger(value) || value < 0 || value >= state.N)) {
+                throw new Error(t('generatedBoxOutOfBounds', { index: index + 1 }));
+            }
+        });
+        return true;
+    }
+
+    function sanitizeFileName(name) {
+        const cleaned = (name || 'bingo_custom')
+            .replace(/[\\/:*?"<>|]+/g, '_')
+            .replace(/\s+/g, '_')
+            .replace(/^_+|_+$/g, '');
+        return (cleaned || 'bingo_custom').replace(/\.json$/i, '') + '.json';
+    }
+
+    function updateGeneratorStatus() {
+        const settings = getGeneratorSettings();
+        const validation = validateGeneratorSettings(settings);
+        setGeneratorStatus(validation.message, validation.ok ? 'ok' : 'error');
+    }
+
+    function showSaveModal() {
+        const settings = getGeneratorSettings();
+        const validation = validateGeneratorSettings(settings);
+        if (!validation.ok) {
+            setGeneratorStatus(validation.message, 'error');
+            return;
+        }
+
+        try {
+            pendingGeneratedState = generateWordCloudState(settings);
+        } catch (error) {
+            pendingGeneratedState = null;
+            setGeneratorStatus(error.message, 'error');
+            return;
+        }
+
+        const baseName = settings.name || `bingo_${new Date().toISOString().slice(0, 10)}`;
+        generatedFileNameInput.value = sanitizeFileName(baseName);
+        saveModalBackdrop.classList.add('visible');
+        generatedFileNameInput.focus();
+        generatedFileNameInput.select();
+    }
+
+    async function confirmGeneratedSave() {
+        if (!pendingGeneratedState) return;
+        const fileName = sanitizeFileName(generatedFileNameInput.value);
+        generatedFileNameInput.value = fileName;
+
+        const json = JSON.stringify(pendingGeneratedState);
+        let savedPath = '';
+        if (window.pywebview && window.pywebview.api.save_generated_bingo) {
+            const result = await window.pywebview.api.save_generated_bingo(fileName, json);
+            if (!result || !result.ok) {
+                setGeneratorStatus(result?.error || t('saveFailed'), 'error');
+                return;
+            }
+            savedPath = result.path || fileName;
+        } else {
+            const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            savedPath = fileName;
+        }
+
+        applyState(pendingGeneratedState);
+        saveState();
+        setMode('DRAW');
+        saveModalBackdrop.classList.remove('visible');
+        pendingGeneratedState = null;
+        setGeneratorStatus(t('saved', { path: savedPath }), 'ok');
+        showToast();
+    }
+
+    function showToast() {
+        clearTimeout(toastTimer);
+        toast.classList.add('visible');
+        toastTimer = setTimeout(() => {
+            toast.classList.remove('visible');
+        }, 1800);
+    }
+
+    renderWordList();
+    updateGeneratorStatus();
+
+    // Block Dragging State
+    let isMouseDown = false;
+    let dragStartCell = null;
+    let dragCurrentCell = null;
+    let selectedArea = null; // {r1, r2, c1, c2}
+    let isMovingBlock = false;
+    let moveBlockStart = null;
+
+    // History (Undo/Redo)
+    let history = [];
+    let historyIndex = -1;
+
+    function saveState() {
+        const state = {
+            N: N,
+            data: cells.map(c => c.input.value),
+            boxes: JSON.parse(JSON.stringify(drawnBoxes))
+        };
+        if (historyIndex < history.length - 1) {
+            history = history.slice(0, historyIndex + 1);
+        }
+        history.push(state);
+        historyIndex++;
+    }
+
+    function applyState(state) {
+        if (N !== state.N) {
+            N = state.N;
+            gridSizeInput.value = N;
+            sizeVal.textContent = N;
+            renderGrid(false); 
+        }
+        cells.forEach((c, i) => {
+            c.input.value = state.data[i] || '';
+        });
+        drawnBoxes = JSON.parse(JSON.stringify(state.boxes || []));
+        clearSelections();
+        renderDrawnBoxes();
+        updateFontSize();
+    }
+
+    function undo() {
+        if (historyIndex > 0) {
+            historyIndex--;
+            applyState(history[historyIndex]);
+        }
+    }
+
+    function redo() {
+        if (historyIndex < history.length - 1) {
+            historyIndex++;
+            applyState(history[historyIndex]);
+        }
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            undo();
+        } else if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+            e.preventDefault();
+            redo();
+        } else if (e.key.toLowerCase() === 'q' && currentMode === 'DRAW') {
+            setColorIndex((currentColorIndex + 1) % customColors.length);
+        }
+    });
+
+    function setMode(mode) {
+        currentMode = mode;
+        if (mode === 'EDIT') {
+            modeEditBtn.style.opacity = '1';
+            modeDrawBtn.style.opacity = '0.4';
+            modeDesc.textContent = t('modeEditDesc');
+            cells.forEach(c => {
+                c.input.readOnly = false;
+                c.input.style.cursor = 'text';
+            });
+            if(firstSelectedCell) {
+                firstSelectedCell.el.classList.remove('selected-endpoint');
+                firstSelectedCell = null;
+            }
+            // Restore UI
+            isCollapsed = false;
+            sidebar.classList.remove('collapsed');
+            mainArea.classList.remove('collapsed-padding');
+            toggleBtn.style.display = 'flex';
+            document.getElementById('color-indicator').style.display = 'none';
+            if (window.pywebview) window.pywebview.api.expand_window();
+        } else {
+            modeEditBtn.style.opacity = '0.4';
+            modeDrawBtn.style.opacity = '1';
+            modeDesc.textContent = t('modeDrawDesc');
+            cells.forEach(c => {
+                c.input.readOnly = true;
+                c.input.blur();
+                c.input.style.cursor = 'pointer';
+            });
+            handleMouseUpOutside(); // cancel any drag
+            
+            // Enter Zen Play Mode
+            isCollapsed = true;
+            sidebar.classList.add('collapsed');
+            mainArea.classList.add('collapsed-padding');
+            toggleBtn.style.display = 'none';
+            document.getElementById('color-indicator').style.display = 'block';
+            updateColorIndicator();
+            if (window.pywebview) window.pywebview.api.collapse_window();
+        }
+        setTimeout(updateFontSize, 350);
+    }
+
+    modeEditBtn.addEventListener('click', () => setMode('EDIT'));
+    modeDrawBtn.addEventListener('click', () => setMode('DRAW'));
+
+    function getCellObj(row, col) {
+        return cells.find(c => c.row === row && c.col === col);
+    }
+
+    function changeGridSize(newN) {
+        const oldData = {};
+        cells.forEach(c => {
+            if (c.input.value) {
+                oldData[`${c.row},${c.col}`] = c.input.value;
+            }
+        });
+        
+        N = newN;
+        sizeVal.textContent = N;
+        gridSizeInput.value = N;
+        renderGrid(false);
+        
+        cells.forEach(c => {
+            const key = `${c.row},${c.col}`;
+            if (oldData[key]) {
+                c.input.value = oldData[key];
+            }
+        });
+        
+        // Filter out boxes that are out of bounds
+        drawnBoxes = drawnBoxes.filter(b => b.r1 < N && b.c1 < N && b.r2 < N && b.c2 < N);
+        renderDrawnBoxes();
+        saveState();
+    }
+
+    function renderGrid(recordHistory = true) {
+        grid.innerHTML = '';
+        grid.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+        grid.style.gridTemplateRows = `repeat(${N}, 1fr)`;
+        cells = [];
+        clearSelections();
+
+        for (let i = 0; i < N * N; i++) {
+            const row = Math.floor(i / N);
+            const col = i % N;
+            
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.maxLength = 10;
+            input.setAttribute('draggable', 'false');
+            input.addEventListener('dragstart', (e) => e.preventDefault());
+            
+            input.addEventListener('mousedown', (e) => { handleMouseDown(e, row, col); });
+
+            input.addEventListener('input', (e) => {
+                updateSingleCellFontSize({ el: cell, input, row, col });
+                saveState();
+            });
+            
+            cell.appendChild(input);
+            grid.appendChild(cell);
+            cells.push({ el: cell, input, row, col });
+        }
+        
+        // Ensure inputs obey mode
+        setMode(currentMode);
+        
+        updateFontSize();
+        if(recordHistory && history.length === 0) {
+            saveState();
+        }
+    }
+
+    function isInsideArea(r, c, area) {
+        if (!area) return false;
+        return r >= area.r1 && r <= area.r2 && c >= area.c1 && c <= area.c2;
+    }
+
+    let startMouseX = 0;
+    let startMouseY = 0;
+    let hasDragged = false;
+
+    function handleMouseDown(e, row, col) {
+        if (currentMode === 'DRAW') {
+            handleDiagonalClick(row, col);
+            return;
+        }
+
+        // Only handle left button (0) and right button (2)
+        if (e.button !== 0 && e.button !== 2) {
+            return;
+        }
+
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
+        hasDragged = false;
+        
+        moveBlockStart = null;
+        dragStartCell = null;
+        dragCurrentCell = null;
+
+        if (e.button === 2) {
+            // Right click: ONLY for dragging an already selected area
+            if (selectedArea && isInsideArea(row, col, selectedArea)) {
+                moveBlockStart = { row, col };
+                isMouseDown = true;
+                document.activeElement?.blur(); // Force blur any focused input to prevent text selection/focus interference
+                e.preventDefault(); // Prevent default text selection/focus on right click
+            } else {
+                isMouseDown = false;
+            }
+        } else if (e.button === 0) {
+            // Left click: ONLY for selection and editing
+            dragStartCell = { row, col };
+            dragCurrentCell = { row, col };
+            isMouseDown = true;
+        }
+    }
+
+    document.addEventListener('mousemove', (e) => {
+        if (currentMode !== 'EDIT' || !isMouseDown) return;
+
+        if (!hasDragged) {
+            const dx = Math.abs(e.clientX - startMouseX);
+            const dy = Math.abs(e.clientY - startMouseY);
+            if (dx > 3 || dy > 3) {
+                hasDragged = true;
+                dragOverlay.classList.add('active');
+                document.activeElement.blur();
+                
+                if (selectedArea && isInsideArea(moveBlockStart?.row, moveBlockStart?.col, selectedArea)) {
+                    isMovingBlock = true;
+                } else {
+                    selectedArea = null;
+                    areaBox.classList.remove('visible');
+                }
+            } else {
+                return;
+            }
+        }
+        
+        const gridRect = grid.getBoundingClientRect();
+        if (e.clientX < gridRect.left || e.clientX > gridRect.right || e.clientY < gridRect.top || e.clientY > gridRect.bottom) {
+            return;
+        }
+        
+        const cellW = gridRect.width / N;
+        const cellH = gridRect.height / N;
+        const col = Math.floor((e.clientX - gridRect.left) / cellW);
+        const row = Math.floor((e.clientY - gridRect.top) / cellH);
+        
+        if (row < 0 || row >= N || col < 0 || col >= N) return;
+
+        if (isMovingBlock && selectedArea && moveBlockStart) {
+            const dr = row - moveBlockStart.row;
+            const dc = col - moveBlockStart.col;
+            drawAreaBox(selectedArea.r1 + dr, selectedArea.r2 + dr, selectedArea.c1 + dc, selectedArea.c2 + dc);
+        } else {
+            dragCurrentCell = { row, col };
+            const r1 = Math.min(dragStartCell.row, dragCurrentCell.row);
+            const r2 = Math.max(dragStartCell.row, dragCurrentCell.row);
+            const c1 = Math.min(dragStartCell.col, dragCurrentCell.col);
+            const c2 = Math.max(dragStartCell.col, dragCurrentCell.col);
+            drawAreaBox(r1, r2, c1, c2);
+        }
+    });
+
+    document.addEventListener('mouseup', (e) => {
+        if (isMouseDown || isMovingBlock) {
+            isMouseDown = false;
+            
+            if (!hasDragged) {
+                // It was just a click (clear selection only on left click)
+                if (e.button === 0 && selectedArea) {
+                    selectedArea = null;
+                    areaBox.classList.remove('visible');
+                }
+                return;
+            }
+            
+            hasDragged = false;
+            dragOverlay.classList.remove('active');
+            
+            const gridRect = grid.getBoundingClientRect();
+            if (e.clientX < gridRect.left || e.clientX > gridRect.right || e.clientY < gridRect.top || e.clientY > gridRect.bottom) {
+                handleMouseUpOutside(); 
+                return;
+            }
+            
+            const cellW = gridRect.width / N;
+            const cellH = gridRect.height / N;
+            const col = Math.floor((e.clientX - gridRect.left) / cellW);
+            const row = Math.floor((e.clientY - gridRect.top) / cellH);
+            
+            if (row < 0 || row >= N || col < 0 || col >= N) {
+                handleMouseUpOutside(); 
+                return;
+            }
+            
+            finishDrag(row, col);
+        }
+    });
+    
+    function handleMouseUpOutside() {
+        isMovingBlock = false;
+        if (!selectedArea) {
+            areaBox.classList.remove('visible');
+        } else {
+            drawAreaBox(selectedArea.r1, selectedArea.r2, selectedArea.c1, selectedArea.c2);
+        }
+        dragOverlay.classList.remove('active');
+    }
+
+    function finishDrag(row, col) {
+        if (currentMode !== 'EDIT') return;
+
+        if (isMovingBlock) {
+            isMovingBlock = false;
+            const dr = row - moveBlockStart.row;
+            const dc = col - moveBlockStart.col;
+            
+            if (dr !== 0 || dc !== 0) {
+                const buffer = [];
+                for(let r = selectedArea.r1; r <= selectedArea.r2; r++) {
+                    for(let c = selectedArea.c1; c <= selectedArea.c2; c++) {
+                        const cellObj = getCellObj(r, c);
+                        buffer.push({ dr: r - selectedArea.r1, dc: c - selectedArea.c1, val: cellObj.input.value });
+                        cellObj.input.value = '';
+                    }
+                }
+                const startR = selectedArea.r1 + dr;
+                const startC = selectedArea.c1 + dc;
+                buffer.forEach(item => {
+                    const nr = startR + item.dr;
+                    const nc = startC + item.dc;
+                    if (nr >= 0 && nr < N && nc >= 0 && nc < N) {
+                        getCellObj(nr, nc).input.value = item.val;
+                    }
+                });
+                updateFontSize();
+                saveState();
+            }
+            selectedArea = null;
+            areaBox.classList.remove('visible');
+            
+        } else if (isMouseDown) {
+            isMouseDown = false;
+            if (dragStartCell.row !== row || dragStartCell.col !== col) {
+                selectedArea = {
+                    r1: Math.min(dragStartCell.row, dragCurrentCell.row),
+                    r2: Math.max(dragStartCell.row, dragCurrentCell.row),
+                    c1: Math.min(dragStartCell.col, dragCurrentCell.col),
+                    c2: Math.max(dragStartCell.col, dragCurrentCell.col),
+                };
+            }
+        }
+    }
+
+    // DRAW Mode Logic
+    let lastClickedCell = null;
+    let clickCount = 0;
+    let clickTimeout = null;
+
+    function handleDiagonalClick(row, col) {
+        // Triple click exit logic
+        if (lastClickedCell && lastClickedCell.row === row && lastClickedCell.col === col) {
+            clickCount++;
+            if (clickCount === 3) {
+                clickCount = 0;
+                lastClickedCell = null;
+                setMode('EDIT');
+                return;
+            }
+        } else {
+            lastClickedCell = {row, col};
+            clickCount = 1;
+        }
+        clearTimeout(clickTimeout);
+        clickTimeout = setTimeout(() => {
+            clickCount = 0;
+            lastClickedCell = null;
+        }, 600);
+        
+        const cellObj = getCellObj(row, col);
+        
+        if (!firstSelectedCell) {
+            firstSelectedCell = { el: cellObj.el, row, col };
+            cellObj.el.classList.add('selected-endpoint');
+        } else {
+            if (firstSelectedCell.row === row && firstSelectedCell.col === col) {
+                // Do not draw a line to itself
+                firstSelectedCell.el.classList.remove('selected-endpoint');
+                firstSelectedCell = null;
+            } else {
+                const secondSelectedCell = { el: cellObj.el, row, col };
+                firstSelectedCell.el.classList.remove('selected-endpoint');
+                
+                drawnBoxes.push({
+                    r1: firstSelectedCell.row,
+                    c1: firstSelectedCell.col,
+                    r2: secondSelectedCell.row,
+                    c2: secondSelectedCell.col,
+                    color: customColors[currentColorIndex]
+                });
+                
+                firstSelectedCell = null;
+                renderDrawnBoxes();
+                saveState();
+            }
+        }
+    }
+
+    function createBoxElement(r1, c1, r2, c2, color) {
+        const el1 = getCellObj(r1, c1)?.el;
+        const el2 = getCellObj(r2, c2)?.el;
+        if (!el1 || !el2) return null;
+        
+        const gridRect = grid.getBoundingClientRect();
+        const rect1 = el1.getBoundingClientRect();
+        const rect2 = el2.getBoundingClientRect();
+        
+        const cx1 = (rect1.left + rect1.right) / 2 - gridRect.left;
+        const cy1 = (rect1.top + rect1.bottom) / 2 - gridRect.top;
+        const cx2 = (rect2.left + rect2.right) / 2 - gridRect.left;
+        const cy2 = (rect2.top + rect2.bottom) / 2 - gridRect.top;
+        
+        const dx = cx2 - cx1;
+        const dy = cy2 - cy1;
+        const dist = Math.hypot(dx, dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        
+        const center_x = (cx1 + cx2) / 2;
+        const center_y = (cy1 + cy2) / 2;
+        
+        const cellW = rect1.width;
+        
+        const boxW = dist + cellW;
+        const boxH = cellW;
+        const padding = 8; 
+        
+        const div = document.createElement('div');
+        div.style.position = 'absolute';
+        div.style.border = `5px solid ${color}`;
+        div.style.backgroundColor = 'transparent';
+        div.style.borderRadius = '8px';
+        div.style.pointerEvents = 'none';
+        div.style.width = `${boxW + padding}px`;
+        div.style.height = `${boxH + padding}px`;
+        div.style.left = `${center_x - (boxW + padding)/2}px`;
+        div.style.top = `${center_y - (boxH + padding)/2}px`;
+        div.style.transform = `rotate(${angle}deg)`;
+        div.style.boxSizing = 'border-box';
+        return div;
+    }
+
+    function renderDrawnBoxes() {
+        boxesContainer.innerHTML = '';
+        drawnBoxes.forEach(box => {
+            const el = createBoxElement(box.r1, box.c1, box.r2, box.c2, box.color);
+            if(el) boxesContainer.appendChild(el);
+        });
+    }
+
+    function drawAreaBox(r1, r2, c1, c2) {
+        r1 = Math.max(0, Math.min(N-1, r1));
+        r2 = Math.max(0, Math.min(N-1, r2));
+        c1 = Math.max(0, Math.min(N-1, c1));
+        c2 = Math.max(0, Math.min(N-1, c2));
+        
+        const el1 = getCellObj(r1, c1).el;
+        const el2 = getCellObj(r2, c2).el;
+        
+        const gridRect = grid.getBoundingClientRect();
+        const rect1 = el1.getBoundingClientRect();
+        const rect2 = el2.getBoundingClientRect();
+        
+        const top = rect1.top - gridRect.top;
+        const left = rect1.left - gridRect.left;
+        const width = rect2.right - rect1.left;
+        const height = rect2.bottom - rect1.top;
+        
+        areaBox.style.top = `${top - 2}px`;
+        areaBox.style.left = `${left - 2}px`;
+        areaBox.style.width = `${width + 4}px`;
+        areaBox.style.height = `${height + 4}px`;
+        areaBox.classList.add('visible');
+    }
+
+    function clearSelections() {
+        if(firstSelectedCell) {
+            firstSelectedCell.el.classList.remove('selected-endpoint');
+            firstSelectedCell = null;
+        }
+        selectedArea = null;
+        areaBox.classList.remove('visible');
+    }
+
+    function updateSingleCellFontSize(c) {
+        const containerWidth = bingoContainer.clientWidth;
+        const baseFontSize = (containerWidth / N) * 0.5;
+        const textLength = c.input.value.length || 1;
+        let scale = 1;
+        if (textLength > 1) {
+            scale = Math.max(0.35, 1.2 / Math.sqrt(textLength));
+        }
+        c.input.style.fontSize = `${baseFontSize * scale}px`;
+    }
+
+    function updateFontSize() {
+        cells.forEach(c => {
+            updateSingleCellFontSize(c);
+        });
+        
+        if(selectedArea) {
+            drawAreaBox(selectedArea.r1, selectedArea.r2, selectedArea.c1, selectedArea.c2);
+        }
+        renderDrawnBoxes();
+    }
+
+    // Events
+    // Prevent context menu globally in EDIT mode so right-drag works seamlessly without being interrupted by standard context menus
+    document.addEventListener('contextmenu', (e) => {
+        if (currentMode === 'EDIT') {
+            e.preventDefault();
+        }
+    });
+
+    // Prevent text selection globally during active drag-and-drop operations
+    document.addEventListener('selectstart', (e) => {
+        if (isMouseDown || isMovingBlock) {
+            e.preventDefault();
+        }
+    });
+
+    languageSelect.addEventListener('change', (e) => {
+        currentLanguage = e.target.value;
+        localStorage.setItem('bingo-ui-language', currentLanguage);
+        applyLanguage();
+    });
+
+    addWordBtn.addEventListener('click', addWordsFromInput);
+
+    clearWordsBtn.addEventListener('click', () => {
+        generatorWords = [];
+        renderWordList();
+        updateGeneratorStatus();
+    });
+
+    wordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            addWordsFromInput();
+        }
+    });
+
+    matrixNameInput.addEventListener('input', updateGeneratorStatus);
+
+    generatorSizeInput.addEventListener('input', (e) => {
+        generatorSizeVal.textContent = e.target.value;
+        generatorSizeVal2.textContent = e.target.value;
+        updateGeneratorStatus();
+    });
+
+    fillCharsInput.addEventListener('input', () => {
+        localStorage.setItem('bingo-generator-fill-chars', fillCharsInput.value);
+        updateGeneratorStatus();
+    });
+
+    allowOverlapInput.addEventListener('change', updateGeneratorStatus);
+    directionToggles.forEach(toggle => toggle.addEventListener('change', updateGeneratorStatus));
+    generateBtn.addEventListener('click', showSaveModal);
+    confirmGenerateBtn.addEventListener('click', () => {
+        confirmGeneratedSave().catch(error => setGeneratorStatus(error.message, 'error'));
+    });
+    cancelGenerateBtn.addEventListener('click', () => {
+        pendingGeneratedState = null;
+        saveModalBackdrop.classList.remove('visible');
+    });
+    saveModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === saveModalBackdrop) {
+            pendingGeneratedState = null;
+            saveModalBackdrop.classList.remove('visible');
+        }
+    });
+
+    gridSizeInput.addEventListener('change', (e) => {
+        changeGridSize(parseInt(e.target.value));
+    });
+
+    clearBtn.addEventListener('click', () => {
+        cells.forEach(c => c.input.value = '');
+        clearSelections();
+        drawnBoxes = [];
+        renderDrawnBoxes();
+        saveState();
+    });
+
+    clearLinesBtn.addEventListener('click', () => {
+        drawnBoxes = [];
+        renderDrawnBoxes();
+        saveState();
+    });
+
+    // Save/Load
+    saveBtn.addEventListener('click', () => {
+        if (window.pywebview) {
+            const state = { N: N, data: cells.map(c => c.input.value), boxes: drawnBoxes };
+            window.pywebview.api.save_bingo(JSON.stringify(state));
+        }
+    });
+
+    loadBtn.addEventListener('click', () => {
+        if (window.pywebview) {
+            window.pywebview.api.load_bingo().then(jsonStr => {
+                if(jsonStr) {
+                    applyState(JSON.parse(jsonStr));
+                    saveState();
+                }
+            });
+        }
+    });
+
+    toggleBtn.addEventListener('click', () => {
+        isCollapsed = !isCollapsed;
+        if (isCollapsed) {
+            sidebar.classList.add('collapsed');
+            toggleBtn.classList.add('collapsed');
+            mainArea.classList.add('collapsed-padding');
+            if (window.pywebview) window.pywebview.api.collapse_window();
+        } else {
+            sidebar.classList.remove('collapsed');
+            toggleBtn.classList.remove('collapsed');
+            mainArea.classList.remove('collapsed-padding');
+            if (window.pywebview) window.pywebview.api.expand_window();
+        }
+        setTimeout(updateFontSize, 350);
+    });
+
+    window.addEventListener('resize', () => {
+        updateFontSize();
+    });
+    
+    document.fonts.ready.then(updateFontSize);
+    
+    // Init
+    setMode('EDIT');
+    renderGrid(true);
+    applyLanguage();
+</script>
+</body>
+</html>
