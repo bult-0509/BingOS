@@ -17,6 +17,14 @@ pip install -r requirements.txt
 python main.py
 ```
 
+## Downloadable Build
+
+The latest prebuilt Windows executable is included at:
+
+```text
+release/BingoEditor_Latest.exe
+```
+
 ## Build
 
 ```powershell
