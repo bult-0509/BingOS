@@ -29,8 +29,8 @@ class Api:
 
     def set_window(self, window):
         self.window = window
-        self.last_width = int(window.width)
-        self.last_height = int(window.height)
+        self.last_width = int(getattr(window, 'initial_width', self.last_width) or self.last_width)
+        self.last_height = int(getattr(window, 'initial_height', self.last_height) or self.last_height)
 
     def on_window_resized(self, width, height):
         try:
