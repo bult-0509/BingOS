@@ -1,4 +1,4 @@
-# BingOS
+# BingOS [![English](https://img.shields.io/badge/Docs-English-red?style=flat-square)](README.md)  [![中文](https://img.shields.io/badge/文档-简体中文-blue?style=flat-square)](README_ZH.md) 
 
 BingOS is a lightweight Bingo and word-matrix editor built with a single HTML frontend and a Python `pywebview` wrapper.
 
@@ -16,22 +16,6 @@ BingOS is a lightweight Bingo and word-matrix editor built with a single HTML fr
 pip install -r requirements.txt
 python main.py
 ```
-
-## Downloadable Build
-
-The latest prebuilt Windows executable is included at:
-
-```text
-release/BingoEditor_Latest.exe
-```
-
-## Build
-
-```powershell
-pyinstaller main.spec --noconfirm
-```
-
-The generated executable is written to `dist/main.exe`.
 
 ## Save Format
 

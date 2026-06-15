@@ -2,7 +2,6 @@ import webview
 import sys
 import os
 import re
-import threading
 
 def get_resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -24,8 +23,6 @@ class Api:
         self.resize_mode = 'EDIT'
         self.last_width = 850
         self.last_height = 600
-        self._resize_guard = False
-        self._resize_lock = threading.Lock()
 
     def set_window(self, window):
         self.window = window
@@ -40,93 +37,39 @@ class Api:
             width = int(width)
             height = int(height)
 
-            with self._resize_lock:
-                if self._resize_guard:
-                    self.last_width = width
-                    self.last_height = height
-                    return
-
-                if getattr(self.window, 'minimized', False) or getattr(self.window, 'maximized', False):
-                    self.last_width = width
-                    self.last_height = height
-                    return
-
-                offset = self.sidebar_width if self.resize_mode == 'EDIT' else 0
-                min_width = self.min_grid_size + offset
-                min_height = self.min_grid_size
-
-                delta_width = abs(width - self.last_width)
-                delta_height = abs(height - self.last_height)
-
-                if delta_width >= delta_height:
-                    target_width = max(min_width, width)
-                    target_height = max(min_height, target_width - offset)
-                    target_width = target_height + offset
-                else:
-                    target_height = max(min_height, height)
-                    target_width = target_height + offset
-
-                if abs(target_width - width) <= 1 and abs(target_height - height) <= 1:
-                    self.last_width = width
-                    self.last_height = height
-                    return
-
-                self._resize_guard = True
-
-            self.window.resize(int(target_width), int(target_height))
-
-            with self._resize_lock:
-                self.last_width = int(target_width)
-                self.last_height = int(target_height)
-                self._resize_guard = False
+            self.last_width = width
+            self.last_height = height
         except Exception as e:
-            with self._resize_lock:
-                self._resize_guard = False
-            print("Error locking resize ratio:", e)
+            print("Error handling resize event:", e)
 
     def collapse_window(self):
         try:
             if self.window:
-                current_width = int(self.window.width)
-                current_height = int(self.window.height)
-                self.expanded_width = current_width
-                self.expanded_height = current_height
-                target_size = max(self.min_grid_size, current_height)
+                target_size = max(self.min_grid_size, self.last_height)
                 self.resize_mode = 'DRAW'
-                self._resize_guard = True
                 self.window.resize(target_size, target_size)
                 self.last_width = target_size
                 self.last_height = target_size
-                self._resize_guard = False
         except Exception as e:
-            self._resize_guard = False
             print("Error resizing:", e)
 
     def expand_window(self):
         try:
             if self.window:
-                current_height = int(self.window.height)
-                target_height = max(self.min_grid_size, current_height)
+                target_height = max(self.min_grid_size, self.last_height)
                 target_width = target_height + self.sidebar_width
                 self.resize_mode = 'EDIT'
-                self._resize_guard = True
                 self.window.resize(target_width, target_height)
                 self.last_width = target_width
                 self.last_height = target_height
-                self._resize_guard = False
         except Exception as e:
-            self._resize_guard = False
             print("Error resizing:", e)
 
     def save_bingo(self, data):
         if self.window:
             result = self.window.create_file_dialog(webview.SAVE_DIALOG, directory='', save_filename='bingo.json', file_types=('JSON Files (*.json)', 'All files (*.*)'))
             if result:
-                import os
-                if isinstance(result, tuple) or isinstance(result, list):
-                    path = result[0]
-                else:
-                    path = result
+                path = result[0] if isinstance(result, (tuple, list)) else result
                 try:
                     with open(path, 'w', encoding='utf-8') as f:
                         f.write(data)
@@ -163,11 +106,7 @@ class Api:
         if self.window:
             result = self.window.create_file_dialog(webview.OPEN_DIALOG, directory='', file_types=('JSON Files (*.json)', 'All files (*.*)'))
             if result:
-                import os
-                if isinstance(result, tuple) or isinstance(result, list):
-                    path = result[0]
-                else:
-                    path = result
+                path = result[0] if isinstance(result, (tuple, list)) else result
                 try:
                     with open(path, 'r', encoding='utf-8') as f:
                         return f.read()
